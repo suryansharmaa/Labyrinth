@@ -1,14 +1,13 @@
 package com.projects.labyrinth.controller;
 
 import com.projects.labyrinth.dto.CreateGameRoomDto;
+import com.projects.labyrinth.dto.GameRoomStateDto;
+import com.projects.labyrinth.dto.JoinGameRoomDto;
 import com.projects.labyrinth.service.GameRoomService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -19,5 +18,16 @@ public class GameRoomController {
     @PostMapping
     public ResponseEntity<String> createRoom(@RequestBody CreateGameRoomDto createGameRoomDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(gameRoomService.createRoom(createGameRoomDto));
+    }
+
+    @PostMapping("/{roomCode}/join")
+    public ResponseEntity<String> joinRoom(@PathVariable String roomCode, @RequestBody JoinGameRoomDto joinGameRoomDto) {
+        gameRoomService.joinRoom(roomCode, joinGameRoomDto);
+        return ResponseEntity.status(HttpStatus.OK).body("Joined Successfully");
+    }
+
+    @GetMapping("/{roomCode}")
+    public ResponseEntity<GameRoomStateDto> getRoomState(@PathVariable String roomCode) {
+        return ResponseEntity.status(HttpStatus.OK).body(gameRoomService.getRoomState(roomCode));
     }
 }
