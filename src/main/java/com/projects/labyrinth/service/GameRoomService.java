@@ -1,13 +1,12 @@
 package com.projects.labyrinth.service;
 
-import com.projects.labyrinth.dto.CreateGameRoomDto;
-import com.projects.labyrinth.dto.GameRoomStateDto;
-import com.projects.labyrinth.dto.JoinGameRoomDto;
-import com.projects.labyrinth.dto.PlayerDto;
+import com.projects.labyrinth.dto.*;
 import com.projects.labyrinth.entity.GameRoom;
 import com.projects.labyrinth.entity.Player;
+import com.projects.labyrinth.entity.Riddle;
 import com.projects.labyrinth.repository.GameRoomRepository;
 import com.projects.labyrinth.repository.PlayerRepository;
+import com.projects.labyrinth.repository.RiddleRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,7 @@ import java.util.UUID;
 public class GameRoomService {
     private final GameRoomRepository gameRoomRepository;
     private final PlayerRepository playerRepository;
+    private final RiddleRepository riddleRepository;
 
     public String createRoom(CreateGameRoomDto createGameRoomDto) {
         String roomCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
@@ -77,5 +77,65 @@ public class GameRoomService {
 
         gameRoomStateDto.setLeaderBoard(leaderBoard);
         return gameRoomStateDto;
+    }
+
+    @Transactional
+    public void startGame(String roomCode) {
+        GameRoom room = gameRoomRepository.findByRoomCode(roomCode).orElseThrow(() -> new RuntimeException("Room not found"));
+
+        if (!room.getStatus().equals("WAITING")) {
+            throw new RuntimeException("Game already started");
+        }
+
+        long riddleCount = riddleRepository.count();
+        if (riddleCount == 0) {
+            throw new RuntimeException("No riddles found");
+        }
+
+        List<Riddle> riddles = riddleRepository.findAll();
+        int random = (int) (Math.random() * riddles.size());
+        Riddle startRiddle = riddles.get(random);
+
+        room.setStatus("IN_PROGRESS");
+        room.setCurrRiddle(startRiddle);
+
+        gameRoomRepository.save(room);
+    }
+
+    @Transactional
+    public AnswerResultDto submitAnswer(String roomCode, SubmitAnswerDto submitAnswerDto) {
+        GameRoom room = gameRoomRepository.findByRoomCode(roomCode).orElseThrow(() -> new RuntimeException("Room not found"));
+
+        if (!room.getStatus().equals("IN_PROGRESS")) {
+            throw new RuntimeException("Game is not active");
+        }
+
+        System.out.println("DEBUG: Searching for player -> '" + submitAnswerDto.getUsername() + "' in room ID -> " + room.getId());
+
+        Player player = playerRepository.findByGameRoomIdAndUserName(room.getId(), submitAnswerDto.getUsername())
+                .orElseThrow(() -> new RuntimeException("Player not found in this room"));
+
+        Riddle currRiddle = room.getCurrRiddle();
+        boolean correct = currRiddle.getAnswer().equalsIgnoreCase(submitAnswerDto.getAnswer().trim());
+
+        AnswerResultDto result = new AnswerResultDto();
+        result.setCorrect(correct);
+
+        if(correct) {
+            player.setScore(player.getScore() + 10);
+            playerRepository.save(player);
+
+            List<Riddle> allRiddles = riddleRepository.findAll();
+            int randomIndex = (int) (Math.random() * allRiddles.size());
+            room.setCurrRiddle(allRiddles.get(randomIndex));
+            gameRoomRepository.save(room);
+
+            result.setMessage("Correct answer!");
+        } else {
+            result.setMessage("Incorrect. Try again.");
+        }
+
+        result.setCurrScore(player.getScore());
+        return result;
     }
 }

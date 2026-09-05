@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SubmitAnswerDto {
-    private Long playerId;
+    private String userName;
     private String answer;
 }

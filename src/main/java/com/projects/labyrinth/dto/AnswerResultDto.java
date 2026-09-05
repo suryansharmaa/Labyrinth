@@ -11,6 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AnswerResultDto {
     private boolean isCorrect;
-    private int pointsAwarded;
+    private int currScore;
     private String message;
 }
